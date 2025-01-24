@@ -76,6 +76,7 @@ class _MapWidgetState extends State<MapWidget> {
           zoomControlsEnabled: false,
           polylines: widget.viewModel.routePolylines,
           markers: _createMarkers(),
+          mapType: widget.viewModel.mapType,
         ),
         // Mesafe göstergesi
         Positioned(
@@ -188,6 +189,16 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           ),
         ),
+        // Harita türü değiştir butonu
+        Positioned(
+          right: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 80,
+          child: FloatingActionButton(
+            heroTag: 'mapTypeButton',
+            onPressed: widget.viewModel.changeMapType,
+            child: Icon(_getMapTypeIcon()),
+          ),
+        ),
       ],
     );
   }
@@ -206,5 +217,17 @@ class _MapWidgetState extends State<MapWidget> {
       );
     }
     return markers;
+  }
+
+  IconData _getMapTypeIcon() {
+    switch (widget.viewModel.mapType) {
+      case MapType.satellite:
+        return Icons.satellite_alt;
+      case MapType.hybrid:
+        return Icons.layers;
+      case MapType.normal:
+      default:
+        return Icons.map;
+    }
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart' as sp;
+import 'core/providers/theme_provider.dart';
+import 'core/theme/app_theme.dart';
 import 'services/database_service.dart';
 import 'services/location_service.dart';
 import 'viewmodel/map_view_model.dart';
@@ -8,16 +11,14 @@ import 'view/screens/route_history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  final prefs = await sp.SharedPreferences.getInstance();
+  
+  runApp(
+    MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(prefs),
+        ),
         Provider<LocationService>(
           create: (_) => LocationService(),
         ),
@@ -31,46 +32,37 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Terra Mobile',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Terra Mobile',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          routes: {
+            '/': (context) => Consumer<MapViewModel>(
+              builder: (context, viewModel, child) => MapScreen(
+                viewModel: viewModel,
               ),
             ),
-          ),
-          cardTheme: CardTheme(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            '/history': (context) => Consumer<MapViewModel>(
+              builder: (context, viewModel, child) => RouteHistoryScreen(
+                viewModel: viewModel,
+              ),
             ),
-          ),
-        ),
-        routes: {
-          '/': (context) => Consumer<MapViewModel>(
-                builder: (context, viewModel, child) => MapScreen(
-                  viewModel: viewModel,
-                ),
-              ),
-          '/history': (context) => Consumer<MapViewModel>(
-                builder: (context, viewModel, child) => RouteHistoryScreen(
-                  viewModel: viewModel,
-                ),
-              ),
-        },
-      ),
+          },
+        );
+      },
     );
   }
 }

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../viewmodel/map_view_model.dart';
 import '../../core/utils/location_formatter.dart';
 import '../widgets/map_widget.dart';
+import '../../core/providers/theme_provider.dart';
+
 class MapScreen extends StatelessWidget {
   final MapViewModel viewModel;
 
@@ -17,11 +19,23 @@ class MapScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Terra Mobile'),
         actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              return IconButton(
+                icon: Icon(
+                  themeProvider.themeMode == ThemeMode.light
+                      ? Icons.dark_mode
+                      : Icons.light_mode,
+                ),
+                onPressed: themeProvider.toggleTheme,
+              );
+            },
+          ),
           Consumer<MapViewModel>(
             builder: (context, viewModel, _) {
               return IconButton(
                 icon: Icon(
-                  viewModel.isTracking ? Icons.wifi : Icons.wifi_off,
+                  viewModel.isTracking ? Icons.location_on : Icons.location_off,
                   color: viewModel.isTracking ? Colors.green : Colors.red,
                 ),
                 onPressed: null,

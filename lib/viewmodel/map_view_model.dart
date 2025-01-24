@@ -30,6 +30,7 @@ class MapViewModel extends ChangeNotifier {
   String _selectedFilter = FilterConstants.dateDesc;
   DateTime? _startDate;
   DateTime? _endDate;
+  MapType _mapType = MapType.normal;
   
   Set<Polyline> get polylines => _polylines;
   Set<Polyline> get routePolylines => _routePolylines;
@@ -41,6 +42,7 @@ class MapViewModel extends ChangeNotifier {
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
   bool get canShowRoute => _selectedRouteId != null;
+  MapType get mapType => _mapType;
   
   // Kamera hareketi için callback
   Function(LatLngBounds)? onCameraMove;
@@ -369,6 +371,23 @@ class MapViewModel extends ChangeNotifier {
   void _setError(String message) {
     _errorMessage = message;
     debugPrint(_errorMessage);
+    notifyListeners();
+  }
+
+  void changeMapType() {
+    switch (_mapType) {
+      case MapType.normal:
+        _mapType = MapType.satellite;
+        break;
+      case MapType.satellite:
+        _mapType = MapType.hybrid;
+        break;
+      case MapType.hybrid:
+        _mapType = MapType.normal;
+        break;
+      default:
+        _mapType = MapType.normal;
+    }
     notifyListeners();
   }
 }
