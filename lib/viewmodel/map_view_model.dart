@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show pi, sin, cos, sqrt, atan2, min, max;
+import 'dart:math' show pi, sin, cos, sqrt, atan2, min, max, pow;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../core/interfaces/i_database_service.dart';
@@ -31,6 +31,7 @@ class MapViewModel extends ChangeNotifier {
   DateTime? _startDate;
   DateTime? _endDate;
   MapType _mapType = MapType.normal;
+  final int _maxVisiblePoints = 1000; // Maksimum görünür nokta sayısı
   
   Set<Polyline> get polylines => _polylines;
   Set<Polyline> get routePolylines => _routePolylines;
@@ -229,36 +230,92 @@ class MapViewModel extends ChangeNotifier {
   }
   
   void _updatePolylines() {
-    if (_routePoints.length < 2) return;
-    
-    _polylines.clear();
-    final List<LatLng> points = _routePoints
+    if (_routePoints.isEmpty) return;
+
+    final points = _optimizeRoutePoints(_routePoints);
+    final List<LatLng> polylinePoints = points
         .map((point) => LatLng(point.latitude, point.longitude))
         .toList();
-    
-    _polylines.add(
+
+    _polylines = {
       Polyline(
         polylineId: const PolylineId('current_route'),
-        points: points,
+        points: polylinePoints,
         color: Colors.blue,
-        width: 5,
+        width: 3,
       ),
-    );
-    
-    try {
-      if (_activeRouteId != null && _routePoints.isNotEmpty) {
-        _databaseService.insertRoutePoint(
-          _activeRouteId!,
-          _routePoints.last,
-        );
-      }
-    } catch (e) {
-      _setError('Error updating route points: $e');
-    }
-    
+    };
     notifyListeners();
   }
-  
+
+  List<LocationModel> _optimizeRoutePoints(List<LocationModel> points) {
+    if (points.length <= _maxVisiblePoints) return points;
+
+    // Douglas-Peucker algoritması ile nokta sayısını azalt
+    final tolerance = 0.00001; // Yaklaşık 1 metre
+    final optimizedPoints = _douglasPeucker(points, tolerance);
+
+    // Eğer hala çok fazla nokta varsa, eşit aralıklarla örnekleme yap
+    if (optimizedPoints.length > _maxVisiblePoints) {
+      final step = optimizedPoints.length ~/ _maxVisiblePoints;
+      return List.generate(
+        _maxVisiblePoints,
+        (i) => optimizedPoints[i * step],
+      );
+    }
+
+    return optimizedPoints;
+  }
+
+  List<LocationModel> _douglasPeucker(List<LocationModel> points, double tolerance) {
+    if (points.length <= 2) return points;
+
+    double maxDistance = 0;
+    int maxIndex = 0;
+
+    final start = points.first;
+    final end = points.last;
+
+    for (int i = 1; i < points.length - 1; i++) {
+      final distance = _perpendicularDistance(points[i], start, end);
+      if (distance > maxDistance) {
+        maxDistance = distance;
+        maxIndex = i;
+      }
+    }
+
+    if (maxDistance > tolerance) {
+      final List<LocationModel> firstHalf = _douglasPeucker(
+        points.sublist(0, maxIndex + 1),
+        tolerance,
+      );
+      final List<LocationModel> secondHalf = _douglasPeucker(
+        points.sublist(maxIndex),
+        tolerance,
+      );
+      return [...firstHalf.take(firstHalf.length - 1), ...secondHalf];
+    }
+
+    return [points.first, points.last];
+  }
+
+  double _perpendicularDistance(
+    LocationModel point,
+    LocationModel lineStart,
+    LocationModel lineEnd,
+  ) {
+    final double area = ((lineEnd.latitude - lineStart.latitude) *
+            (point.longitude - lineStart.longitude) -
+        (lineEnd.longitude - lineStart.longitude) *
+            (point.latitude - lineStart.latitude))
+        .abs();
+    final double bottom = sqrt(
+      pow(lineEnd.latitude - lineStart.latitude, 2) +
+          pow(lineEnd.longitude - lineStart.longitude, 2),
+    );
+    return area / bottom;
+  }
+
   double _calculateTotalDistance() {
     if (_routePoints.length < 2) return 0;
     
