@@ -133,70 +133,49 @@ class _MapWidgetState extends State<MapWidget> {
               child: const Text('Rotayı Göster'),
             ),
           ),
-        // Zoom butonları
-        Positioned(
-          right: 16,
-          bottom: MediaQuery.of(context).padding.bottom + 100,
-          child: Column(
-            children: [
-              FloatingActionButton(
-                heroTag: "btn_zoom_in",
-                mini: true,
-                backgroundColor: Colors.white,
-                onPressed: () {
-                  if (_mapController != null) {
-                    _mapController!.animateCamera(
-                      CameraUpdate.zoomIn(),
-                    );
-                  }
-                },
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              FloatingActionButton(
-                heroTag: "btn_zoom_out",
-                mini: true,
-                backgroundColor: Colors.white,
-                onPressed: () {
-                  if (_mapController != null) {
-                    _mapController!.animateCamera(
-                      CameraUpdate.zoomOut(),
-                    );
-                  }
-                },
-                child: const Icon(
-                  Icons.remove,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Konum butonu
+        // Zoom butonları ve diğer kontroller
         Positioned(
           right: 16,
           bottom: MediaQuery.of(context).padding.bottom + 16,
-          child: FloatingActionButton(
-            heroTag: 'my_location',
-            onPressed: _goToCurrentLocation,
-            backgroundColor: Colors.white,
-            child: const Icon(
-              Icons.my_location,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-        // Harita türü değiştir butonu
-        Positioned(
-          right: 16,
-          bottom: MediaQuery.of(context).padding.bottom + 80,
-          child: FloatingActionButton(
-            heroTag: 'mapTypeButton',
-            onPressed: widget.viewModel.changeMapType,
-            child: Icon(_getMapTypeIcon()),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Zoom In butonu
+              FloatingActionButton.small(
+                heroTag: 'zoomInButton',
+                onPressed: () {
+                  _mapController?.animateCamera(
+                    CameraUpdate.zoomIn(),
+                  );
+                },
+                child: const Icon(Icons.add),
+              ),
+              const SizedBox(height: 8),
+              // Zoom Out butonu
+              FloatingActionButton.small(
+                heroTag: 'zoomOutButton',
+                onPressed: () {
+                  _mapController?.animateCamera(
+                    CameraUpdate.zoomOut(),
+                  );
+                },
+                child: const Icon(Icons.remove),
+              ),
+              const SizedBox(height: 8),
+              // Harita türü değiştirme butonu
+              FloatingActionButton(
+                heroTag: 'mapTypeButton',
+                onPressed: widget.viewModel.changeMapType,
+                child: Icon(_getMapTypeIcon(), size: 28),
+              ),
+              const SizedBox(height: 8),
+              // Mevcut konuma git butonu
+              FloatingActionButton(
+                heroTag: 'currentLocationButton',
+                onPressed: _goToCurrentLocation,
+                child: const Icon(Icons.my_location, size: 28),
+              ),
+            ],
           ),
         ),
       ],

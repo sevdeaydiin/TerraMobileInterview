@@ -18,19 +18,19 @@ class MapScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Terra Mobile'),
+        leading: Consumer<ThemeProvider>(
+          builder: (context, themeProvider, _) {
+            return IconButton(
+              icon: Icon(
+                themeProvider.themeMode == ThemeMode.light
+                    ? Icons.dark_mode
+                    : Icons.light_mode,
+              ),
+              onPressed: themeProvider.toggleTheme,
+            );
+          },
+        ),
         actions: [
-          Consumer<ThemeProvider>(
-            builder: (context, themeProvider, _) {
-              return IconButton(
-                icon: Icon(
-                  themeProvider.themeMode == ThemeMode.light
-                      ? Icons.dark_mode
-                      : Icons.light_mode,
-                ),
-                onPressed: themeProvider.toggleTheme,
-              );
-            },
-          ),
           Consumer<MapViewModel>(
             builder: (context, viewModel, _) {
               return IconButton(
