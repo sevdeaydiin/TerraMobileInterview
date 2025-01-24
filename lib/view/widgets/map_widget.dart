@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/utils/location_formatter.dart';
 import '../../models/location_model.dart';
 import '../../viewmodel/map_view_model.dart';
 
@@ -75,7 +74,7 @@ class _MapWidgetState extends State<MapWidget> {
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
           polylines: widget.viewModel.routePolylines,
-          markers: _createMarkers(),
+          markers: widget.viewModel.markers,
           mapType: widget.viewModel.mapType,
         ),
         // Mesafe göstergesi
@@ -180,22 +179,6 @@ class _MapWidgetState extends State<MapWidget> {
         ),
       ],
     );
-  }
-
-  Set<Marker> _createMarkers() {
-    final markers = <Marker>{};
-    if (widget.currentLocation != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('current_location'),
-          position: LatLng(
-            widget.currentLocation!.latitude,
-            widget.currentLocation!.longitude,
-          ),
-        ),
-      );
-    }
-    return markers;
   }
 
   IconData _getMapTypeIcon() {

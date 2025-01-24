@@ -1,11 +1,14 @@
 import 'dart:async';
-import 'dart:math' show pi, sin, cos, sqrt, atan2, min, max, pow;
+import 'dart:math' show pi, sin, cos, sqrt, atan2, pow;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../core/interfaces/i_database_service.dart';
 import '../core/interfaces/i_location_service.dart';
 import '../models/location_model.dart';
 import '../core/constants/filter_constants.dart';
+import 'dart:ui' as ui;
 
 class MapViewModel extends ChangeNotifier {
   final ILocationService _locationService;
@@ -25,6 +28,7 @@ class MapViewModel extends ChangeNotifier {
   List<LocationModel> _routePoints = [];
   Set<Polyline> _polylines = {};
   Set<Polyline> _routePolylines = {};
+  Set<Marker> _markers = {};
   LocationModel? _currentLocation;
   List<Map<String, dynamic>> _historicalRoutes = [];
   String _selectedFilter = FilterConstants.dateDesc;
@@ -33,8 +37,12 @@ class MapViewModel extends ChangeNotifier {
   MapType _mapType = MapType.normal;
   final int _maxVisiblePoints = 1000; // Maksimum görünür nokta sayısı
   
+  BitmapDescriptor? _startIcon;
+  BitmapDescriptor? _endIcon;
+
   Set<Polyline> get polylines => _polylines;
   Set<Polyline> get routePolylines => _routePolylines;
+  Set<Marker> get markers => _markers;
   LocationModel? get currentLocation => _currentLocation;
   List<LocationModel> get currentRoutePoints => _routePoints;
   double get currentDistance => _calculateTotalDistance();
@@ -119,12 +127,18 @@ class MapViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       
+      // Marker ikonlarını oluştur
+      await _createMarkerIcons();
+      
       final points = await _databaseService.getRoutePoints(_selectedRouteId!);
       
       if (points.isEmpty) {
         _setError('No points found for selected route');
         return;
       }
+
+      final startPoint = points.first;
+      final endPoint = points.last;
 
       _routePolylines = {
         Polyline(
@@ -135,16 +149,30 @@ class MapViewModel extends ChangeNotifier {
         ),
       };
 
+      _markers = {
+        Marker(
+          markerId: const MarkerId('start'),
+          position: LatLng(startPoint.latitude, startPoint.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(title: 'Başlangıç'),
+        ),
+        Marker(
+          markerId: const MarkerId('end'),
+          position: LatLng(endPoint.latitude, endPoint.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: const InfoWindow(title: 'Bitiş'),
+        ),
+      };
+
       if (onCameraMove != null) {
+        double minLat = points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b);
+        double maxLat = points.map((p) => p.latitude).reduce((a, b) => a > b ? a : b);
+        double minLng = points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b);
+        double maxLng = points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b);
+
         final bounds = LatLngBounds(
-          southwest: LatLng(
-            points.map((p) => p.latitude).reduce(min),
-            points.map((p) => p.longitude).reduce(min),
-          ),
-          northeast: LatLng(
-            points.map((p) => p.latitude).reduce(max),
-            points.map((p) => p.longitude).reduce(max),
-          ),
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
         );
         onCameraMove!(bounds);
       }
@@ -420,6 +448,55 @@ class MapViewModel extends ChangeNotifier {
     return filteredRoutes;
   }
 
+  Future<void> _createMarkerIcons() async {
+    if (_startIcon == null) {
+      _startIcon = await _createCustomMarkerFromIcon(
+        Icons.radio_button_on,
+        Colors.green,
+      );
+    }
+    if (_endIcon == null) {
+      _endIcon = await _createCustomMarkerFromIcon(
+        Icons.where_to_vote_rounded,
+        Colors.red,
+      );
+    }
+  }
+
+  Future<BitmapDescriptor> _createCustomMarkerFromIcon(IconData icon, Color color) async {
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+    final size = const Size(48, 48);
+
+    final paint = Paint()
+      ..color = color;
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(icon.codePoint),
+      style: TextStyle(
+        fontSize: 40,
+        fontFamily: icon.fontFamily,
+        color: color,
+      ),
+    );
+
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size.width - textPainter.width) / 2,
+        (size.height - textPainter.height) / 2,
+      ),
+    );
+
+    final picture = pictureRecorder.endRecording();
+    final image = await picture.toImage(size.width.toInt(), size.height.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -446,5 +523,83 @@ class MapViewModel extends ChangeNotifier {
         _mapType = MapType.normal;
     }
     notifyListeners();
+  }
+
+  Future<List<LatLng>?> getDirections(LatLng origin, LatLng destination, List<LocationModel> waypoints) async {
+    try {
+      final url = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/directions/json',
+        {
+          'origin': '${origin.latitude},${origin.longitude}',
+          'destination': '${destination.latitude},${destination.longitude}',
+          'waypoints': waypoints.map((p) => '${p.latitude},${p.longitude}').join('|'),
+          'mode': 'walking',
+          'key': 'YOUR_GOOGLE_MAPS_API_KEY', // Google Maps API anahtarınızı buraya ekleyin
+        },
+      );
+
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final points = _decodePolyline(data['routes'][0]['overview_polyline']['points']);
+          return points;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error getting directions: $e');
+      return null;
+    }
+  }
+
+  List<LatLng> _decodePolyline(String encoded) {
+    List<LatLng> points = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      points.add(LatLng(lat / 1e5, lng / 1e5));
+    }
+    return points;
+  }
+
+  LatLngBounds _getBoundsForPoints(List<LatLng> points) {
+    double minLat = points[0].latitude;
+    double maxLat = points[0].latitude;
+    double minLng = points[0].longitude;
+    double maxLng = points[0].longitude;
+
+    for (var point in points) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
   }
 }
