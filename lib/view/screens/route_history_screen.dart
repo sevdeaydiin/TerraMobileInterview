@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../viewmodel/map_view_model.dart';
 import 'package:intl/intl.dart';
+import '../../core/constants/filter_constants.dart';
 
 class RouteHistoryScreen extends StatelessWidget {
   final MapViewModel viewModel;
@@ -19,6 +20,12 @@ class RouteHistoryScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_alt_rounded),
+            onPressed: () => _showFilterDialog(context),
+          ),
+        ],
       ),
       body: AnimatedBuilder(
         animation: viewModel,
@@ -82,6 +89,106 @@ class RouteHistoryScreen extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showFilterDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Rota Filtreleme'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Sıralama:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButton<String>(
+                  value: viewModel.selectedFilter,
+                  isExpanded: true,
+                  items: FilterConstants.sortOptions.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (String? value) {
+                    if (value != null) {
+                      viewModel.setFilter(value);
+                      setState(() {});
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text('Tarih Aralığı:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: viewModel.startDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            viewModel.setDateRange(picked, viewModel.endDate);
+                            setState(() {});
+                          }
+                        },
+                        child: Text(
+                          viewModel.startDate != null
+                              ? DateFormat('dd/MM/yyyy').format(viewModel.startDate!)
+                              : 'Başlangıç',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: viewModel.endDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            viewModel.setDateRange(viewModel.startDate, picked);
+                            setState(() {});
+                          }
+                        },
+                        child: Text(
+                          viewModel.endDate != null
+                              ? DateFormat('dd/MM/yyyy').format(viewModel.endDate!)
+                              : 'Bitiş',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                viewModel.setDateRange(null, null);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Filtreleri Temizle'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tamam'),
+            ),
+          ],
+        ),
       ),
     );
   }

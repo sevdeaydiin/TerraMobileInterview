@@ -3,7 +3,6 @@ import 'package:path/path.dart';
 import '../core/constants/app_constants.dart';
 import '../core/interfaces/i_database_service.dart';
 import '../models/location_model.dart';
-import 'dart:math' show pi, sin, cos, sqrt, atan2;
 
 class DatabaseService implements IDatabaseService {
   Database? _db;

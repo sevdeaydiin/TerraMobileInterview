@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../services/database_service.dart';
 import '../../viewmodel/map_view_model.dart';
-import '../../viewmodel/route_history_view_model.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/utils/location_formatter.dart';
 import '../widgets/map_widget.dart';
-import 'route_history_screen.dart';
-
 class MapScreen extends StatelessWidget {
   final MapViewModel viewModel;
 

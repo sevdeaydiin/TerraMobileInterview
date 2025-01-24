@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../core/interfaces/i_database_service.dart';
 import '../core/interfaces/i_location_service.dart';
 import '../models/location_model.dart';
+import '../core/constants/filter_constants.dart';
 
 class MapViewModel extends ChangeNotifier {
   final ILocationService _locationService;
@@ -26,13 +27,19 @@ class MapViewModel extends ChangeNotifier {
   Set<Polyline> _routePolylines = {};
   LocationModel? _currentLocation;
   List<Map<String, dynamic>> _historicalRoutes = [];
+  String _selectedFilter = FilterConstants.dateDesc;
+  DateTime? _startDate;
+  DateTime? _endDate;
   
   Set<Polyline> get polylines => _polylines;
   Set<Polyline> get routePolylines => _routePolylines;
   LocationModel? get currentLocation => _currentLocation;
   List<LocationModel> get currentRoutePoints => _routePoints;
   double get currentDistance => _calculateTotalDistance();
-  List<Map<String, dynamic>> get historicalRoutes => _historicalRoutes;
+  List<Map<String, dynamic>> get historicalRoutes => _getFilteredRoutes();
+  String get selectedFilter => _selectedFilter;
+  DateTime? get startDate => _startDate;
+  DateTime? get endDate => _endDate;
   bool get canShowRoute => _selectedRouteId != null;
   
   // Kamera hareketi için callback
@@ -293,6 +300,65 @@ class MapViewModel extends ChangeNotifier {
   
   double _toRadians(double degree) {
     return degree * pi / 180;
+  }
+
+  void setFilter(String filter) {
+    _selectedFilter = filter;
+    notifyListeners();
+  }
+
+  void setDateRange(DateTime? start, DateTime? end) {
+    _startDate = start;
+    _endDate = end;
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> _getFilteredRoutes() {
+    var filteredRoutes = List<Map<String, dynamic>>.from(_historicalRoutes);
+
+    // Tarih filtresi
+    if (_startDate != null || _endDate != null) {
+      filteredRoutes = filteredRoutes.where((route) {
+        final routeDate = DateTime.parse(route['start_time'] as String);
+        if (_startDate != null && routeDate.isBefore(_startDate!)) {
+          return false;
+        }
+        if (_endDate != null && routeDate.isAfter(_endDate!.add(const Duration(days: 1)))) {
+          return false;
+        }
+        return true;
+      }).toList();
+    }
+
+    // Sıralama
+    switch (_selectedFilter) {
+      case FilterConstants.dateAsc:
+        filteredRoutes.sort((a, b) => DateTime.parse(b['start_time'] as String)
+            .compareTo(DateTime.parse(a['start_time'] as String)));
+        break;
+      case FilterConstants.dateDesc:
+        filteredRoutes.sort((a, b) => DateTime.parse(a['start_time'] as String)
+            .compareTo(DateTime.parse(b['start_time'] as String)));
+        break;
+      case FilterConstants.distanceAsc:
+        filteredRoutes.sort((a, b) => ((a['total_distance'] as num?)?.toDouble() ?? 0.0)
+            .compareTo((b['total_distance'] as num?)?.toDouble() ?? 0.0));
+        break;
+      case FilterConstants.distanceDesc:
+        filteredRoutes.sort((a, b) => ((b['total_distance'] as num?)?.toDouble() ?? 0.0)
+            .compareTo((a['total_distance'] as num?)?.toDouble() ?? 0.0));
+        break;
+      case FilterConstants.durationAsc:
+        filteredRoutes.sort((a, b) => (a['duration'] as int? ?? 0)
+            .compareTo(b['duration'] as int? ?? 0));
+        break;
+      case FilterConstants.durationDesc:
+        filteredRoutes.sort((a, b) => (b['duration'] as int? ?? 0)
+            .compareTo(a['duration'] as int? ?? 0));
+        break;
+    }
+
+    return filteredRoutes;
   }
 
   void _setLoading(bool value) {
