@@ -17,9 +17,18 @@ class MapScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Terra Mobile'),
+        title: Text(viewModel.selectedRouteId != null ? 'Geçmiş Rota' : 'Terra Mobile'),
         leading: Consumer<ThemeProvider>(
           builder: (context, themeProvider, _) {
+            if (viewModel.selectedRouteId != null) {
+              return IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  viewModel.selectRoute(null);
+                  Navigator.pushNamed(context, '/history');
+                },
+              );
+            }
             return IconButton(
               icon: Icon(
                 themeProvider.themeMode == ThemeMode.light
@@ -30,23 +39,25 @@ class MapScreen extends StatelessWidget {
             );
           },
         ),
-        actions: [
-          Consumer<MapViewModel>(
-            builder: (context, viewModel, _) {
-              return IconButton(
-                icon: Icon(
-                  viewModel.isTracking ? Icons.location_on : Icons.location_off,
-                  color: viewModel.isTracking ? Colors.green : Colors.red,
+        actions: viewModel.selectedRouteId == null
+            ? [
+                Consumer<MapViewModel>(
+                  builder: (context, viewModel, _) {
+                    return IconButton(
+                      icon: Icon(
+                        viewModel.isTracking ? Icons.location_on : Icons.location_off,
+                        color: viewModel.isTracking ? Colors.green : Colors.red,
+                      ),
+                      onPressed: () => viewModel.toggleTracking(),
+                    );
+                  },
                 ),
-                onPressed: null,
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => Navigator.pushNamed(context, '/history'),
-          ),
-        ],
+                IconButton(
+                  icon: const Icon(Icons.history),
+                  onPressed: () => Navigator.pushNamed(context, '/history'),
+                ),
+              ]
+            : null,
       ),
       body: ListenableBuilder(
         listenable: viewModel,

@@ -8,6 +8,7 @@ import '../core/interfaces/i_database_service.dart';
 import '../core/interfaces/i_location_service.dart';
 import '../models/location_model.dart';
 import '../core/constants/filter_constants.dart';
+import 'dart:math';
 import 'dart:ui' as ui;
 
 class MapViewModel extends ChangeNotifier {
@@ -52,6 +53,7 @@ class MapViewModel extends ChangeNotifier {
   DateTime? get endDate => _endDate;
   bool get canShowRoute => _selectedRouteId != null;
   MapType get mapType => _mapType;
+  int? get selectedRouteId => _selectedRouteId;
   
   // Kamera hareketi için callback
   Function(LatLngBounds)? onCameraMove;
@@ -116,8 +118,12 @@ class MapViewModel extends ChangeNotifier {
     }
   }
 
-  void selectRoute(int routeId) {
+  void selectRoute(int? routeId) {
     _selectedRouteId = routeId;
+    if (routeId == null) {
+      _routePolylines.clear();
+      _markers.clear();
+    }
     notifyListeners();
   }
 
@@ -126,9 +132,6 @@ class MapViewModel extends ChangeNotifier {
 
     try {
       _setLoading(true);
-      
-      // Marker ikonlarını oluştur
-      await _createMarkerIcons();
       
       final points = await _databaseService.getRoutePoints(_selectedRouteId!);
       
@@ -139,42 +142,80 @@ class MapViewModel extends ChangeNotifier {
 
       final startPoint = points.first;
       final endPoint = points.last;
+      final waypoints = points.sublist(1, points.length - 1);
 
-      _routePolylines = {
-        Polyline(
-          polylineId: PolylineId('route_$_selectedRouteId'),
-          points: points.map((p) => LatLng(p.latitude, p.longitude)).toList(),
-          color: Colors.blue,
-          width: 5,
-        ),
-      };
+      // Google Maps Directions API'den rota al
+      final url = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/directions/json',
+        {
+          'origin': '${startPoint.latitude},${startPoint.longitude}',
+          'destination': '${endPoint.latitude},${endPoint.longitude}',
+          if (waypoints.isNotEmpty)
+            'waypoints': waypoints.map((p) => 'via:${p.latitude},${p.longitude}').join('|'),
+          'mode': 'walking',
+          'alternatives': 'false',
+          'key': 'AIzaSyCY5fBwejF-Qv0h93Ii7doiWgRxqJ1hB_Y', // Google Maps API anahtarınızı buraya ekleyin
+        },
+      );
 
-      _markers = {
-        Marker(
-          markerId: const MarkerId('start'),
-          position: LatLng(startPoint.latitude, startPoint.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-          infoWindow: const InfoWindow(title: 'Başlangıç'),
-        ),
-        Marker(
-          markerId: const MarkerId('end'),
-          position: LatLng(endPoint.latitude, endPoint.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          infoWindow: const InfoWindow(title: 'Bitiş'),
-        ),
-      };
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final route = data['routes'][0];
+          final encodedPoints = route['overview_polyline']['points'] as String;
+          final List<LatLng> routePoints = _decodePolyline(encodedPoints);
 
-      if (onCameraMove != null) {
-        double minLat = points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b);
-        double maxLat = points.map((p) => p.latitude).reduce((a, b) => a > b ? a : b);
-        double minLng = points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b);
-        double maxLng = points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b);
+          // Polyline'ı güncelle
+          _routePolylines = {
+            Polyline(
+              polylineId: PolylineId('route_$_selectedRouteId'),
+              points: routePoints,
+              color: Colors.blue,
+              width: 5,
+              patterns: [
+                PatternItem.dash(20.0),
+                PatternItem.gap(5.0),
+              ],
+            ),
+          };
 
-        final bounds = LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
-        );
-        onCameraMove!(bounds);
+          // Markerları ekle
+          _markers = {
+            Marker(
+              markerId: const MarkerId('start'),
+              position: LatLng(startPoint.latitude, startPoint.longitude),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+              infoWindow: const InfoWindow(title: 'Başlangıç'),
+            ),
+            Marker(
+              markerId: const MarkerId('end'),
+              position: LatLng(endPoint.latitude, endPoint.longitude),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+              infoWindow: const InfoWindow(title: 'Bitiş'),
+            ),
+          };
+
+          // Harita sınırlarını ayarla
+          if (onCameraMove != null) {
+            final bounds = LatLngBounds(
+              southwest: LatLng(
+                routePoints.map((p) => p.latitude).reduce(min),
+                routePoints.map((p) => p.longitude).reduce(min),
+              ),
+              northeast: LatLng(
+                routePoints.map((p) => p.latitude).reduce(max),
+                routePoints.map((p) => p.longitude).reduce(max),
+              ),
+            );
+            onCameraMove!(bounds);
+          }
+        } else {
+          _setError('Rota alınamadı: ${data['status']}');
+        }
+      } else {
+        _setError('Rota alınamadı: HTTP ${response.statusCode}');
       }
 
       notifyListeners();
@@ -183,6 +224,36 @@ class MapViewModel extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  List<LatLng> _decodePolyline(String encoded) {
+    List<LatLng> points = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      points.add(LatLng(lat / 1e5, lng / 1e5));
+    }
+    return points;
   }
 
   Future<void> startTracking() async {
@@ -552,36 +623,6 @@ class MapViewModel extends ChangeNotifier {
       print('Error getting directions: $e');
       return null;
     }
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> points = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      points.add(LatLng(lat / 1e5, lng / 1e5));
-    }
-    return points;
   }
 
   LatLngBounds _getBoundsForPoints(List<LatLng> points) {

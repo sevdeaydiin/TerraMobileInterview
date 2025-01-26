@@ -49,6 +49,7 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,
+          debugShowCheckedModeBanner: false,
           routes: {
             '/': (context) => Consumer<MapViewModel>(
               builder: (context, viewModel, child) => MapScreen(

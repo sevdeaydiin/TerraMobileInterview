@@ -60,45 +60,34 @@ class DatabaseService implements IDatabaseService {
   Future<void> loadMockRoutes() async {
     final db = await database;
 
-    // Konya'da 3 farklı rota oluştur
+    // Konya'da gerçek konumlarla mock rotalar
     final routes = [
       {
-        'start_time': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
-        'end_time': DateTime.now().subtract(const Duration(days: 2, hours: 1)).toIso8601String(),
-        'total_distance': 5.2, // 5.2 km
-        'duration': 3600, // 1 saat
-        'average_speed': 5.2, // 5.2 km/s
-        'is_active': 0,
-        'points': [
-          {'lat': 37.8745, 'lng': 32.4932}, // Mevlana Müzesi
-          {'lat': 37.8715, 'lng': 32.4982}, // Alaeddin Tepesi
-          {'lat': 37.8695, 'lng': 32.5032}, // Kültürpark
-        ]
-      },
-      {
+        'id': 1,
         'start_time': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-        'end_time': DateTime.now().subtract(const Duration(days: 1, minutes: 45)).toIso8601String(),
-        'total_distance': 3.8, // 3.8 km
-        'duration': 2700, // 45 dakika
-        'average_speed': 5.1, // 5.1 km/s
+        'end_time': DateTime.now().subtract(const Duration(days: 1, hours: -1)).toIso8601String(),
+        'total_distance': 2.5,
+        'duration': 3600,
+        'average_speed': 2.5,
         'is_active': 0,
         'points': [
-          {'lat': 37.8745, 'lng': 32.4932}, // Mevlana Müzesi
-          {'lat': 37.8725, 'lng': 32.4882}, // Şems-i Tebrizi Türbesi
-          {'lat': 37.8705, 'lng': 32.4832}, // İplikçi Camii
+          {'latitude': 37.8716, 'longitude': 32.4846}, // Mevlana Müzesi
+          {'latitude': 37.8725, 'longitude': 32.4882}, // Şems-i Tebrizi Camii
+          {'latitude': 37.8694, 'longitude': 32.4829}, // Kayalı Park
         ]
       },
       {
-        'start_time': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
-        'end_time': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        'total_distance': 2.5, // 2.5 km
-        'duration': 3600, // 1 saat
-        'average_speed': 2.5, // 2.5 km/s
+        'id': 2,
+        'start_time': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+        'end_time': DateTime.now().subtract(const Duration(days: 2, hours: -1)).toIso8601String(),
+        'total_distance': 3.0,
+        'duration': 4500,
+        'average_speed': 2.4,
         'is_active': 0,
         'points': [
-          {'lat': 37.8745, 'lng': 32.4932}, // Mevlana Müzesi
-          {'lat': 37.8765, 'lng': 32.4952}, // Selimiye Camii
-          {'lat': 37.8785, 'lng': 32.4972}, // Aziziye Camii
+          {'latitude': 37.8735, 'longitude': 32.4867}, // Alaeddin Tepesi
+          {'latitude': 37.8719, 'longitude': 32.4842}, // Mevlana Müzesi
+          {'latitude': 37.8675, 'longitude': 32.4815}, // Zafer Meydanı
         ]
       },
     ];
@@ -108,12 +97,12 @@ class DatabaseService implements IDatabaseService {
       final points = route.remove('points') as List;
       final routeId = await db.insert('routes', route);
 
-      // Rotanın noktalarını ekle
+      // Rotaya ait noktaları ekle
       for (final point in points) {
         await db.insert('route_points', {
           'route_id': routeId,
-          'latitude': point['lat'],
-          'longitude': point['lng'],
+          'latitude': point['latitude'],
+          'longitude': point['longitude'],
           'timestamp': DateTime.now().toIso8601String(),
         });
       }
