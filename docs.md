@@ -1,12 +1,15 @@
 ## WebSocket Adresi
 **WebSocket Bağlantısı**
+
 Uygulama, gerçek zamanlı konum güncellemeleri almak için WebSocket kullanmaktadır. WebSocket, sürekli bir bağlantı sağlayarak sunucu ile istemci arasında veri alışverişi yapar.
 
 **WebSocket Adresi**
+
 WebSocket bağlantısı için kullanılan adres aşağıdaki gibidir:
 ws://your-websocket-server-address:port
 
 **Kullanım**
+
 WebSocket bağlantısı, uygulama başlatıldığında location_service.dart dosyasında yapılandırılır. Aşağıda örnek bir bağlantı kodu verilmiştir:
 
 ```bash
@@ -29,9 +32,11 @@ class LocationService {
 ## SQLite Yapılandırması
 
 **SQLite Veritabanı**
+
 Uygulama, kullanıcıların geçmiş rotalarını saklamak için SQLite veritabanını kullanmaktadır. SQLite, hafif ve yerel bir veritabanı çözümüdür.
 
 **Veritabanı Yapılandırması**
+
 SQLite veritabanı, database_service.dart dosyasında yapılandırılır. Aşağıda örnek bir veritabanı yapılandırma kodu verilmiştir:
 
 ```bash
@@ -85,6 +90,7 @@ class DatabaseService {
 ```
 
 **Veritabanı Tabloları**
+
 Uygulama, aşağıdaki tabloyu kullanmaktadır:
 - routes: Kullanıcıların geçmiş rotalarını saklamak için.
 - id: Rota kimliği (otomatik artan).
@@ -96,4 +102,5 @@ Uygulama, aşağıdaki tabloyu kullanmaktadır:
 - is_active: Rota aktif mi (0 veya 1).
 
 **Kullanım**
+
 Veritabanı işlemleri, DatabaseService sınıfı aracılığıyla gerçekleştirilir. Rota eklemek veya almak için ilgili metodları çağırabilirsiniz.
