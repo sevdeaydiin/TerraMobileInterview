@@ -41,6 +41,9 @@ class MapViewModel extends ChangeNotifier {
   BitmapDescriptor? _startIcon;
   BitmapDescriptor? _endIcon;
 
+  double _selectedRouteDistance = 0;
+  double get selectedRouteDistance => _selectedRouteDistance;
+
   Set<Polyline> get polylines => _polylines;
   Set<Polyline> get routePolylines => _routePolylines;
   Set<Marker> get markers => _markers;
@@ -123,6 +126,7 @@ class MapViewModel extends ChangeNotifier {
     if (routeId == null) {
       _routePolylines.clear();
       _markers.clear();
+      _selectedRouteDistance = 0;
     }
     notifyListeners();
   }
@@ -140,82 +144,76 @@ class MapViewModel extends ChangeNotifier {
         return;
       }
 
-      final startPoint = points.first;
-      final endPoint = points.last;
-      final waypoints = points.sublist(1, points.length - 1);
+      // Seçilen rotanın mesafesini hesapla
+      _selectedRouteDistance = 0;
+      for (int i = 0; i < points.length - 1; i++) {
+        _selectedRouteDistance += _calculateDistance(
+          points[i].latitude,
+          points[i].longitude,
+          points[i + 1].latitude,
+          points[i + 1].longitude,
+        );
+      }
 
-      // Google Maps Directions API'den rota al
-      final url = Uri.https(
-        'maps.googleapis.com',
-        '/maps/api/directions/json',
-        {
-          'origin': '${startPoint.latitude},${startPoint.longitude}',
-          'destination': '${endPoint.latitude},${endPoint.longitude}',
-          if (waypoints.isNotEmpty)
-            'waypoints': waypoints.map((p) => 'via:${p.latitude},${p.longitude}').join('|'),
-          'mode': 'walking',
-          'alternatives': 'false',
-          'key': 'AIzaSyCY5fBwejF-Qv0h93Ii7doiWgRxqJ1hB_Y', // Google Maps API anahtarınızı buraya ekleyin
-        },
-      );
+      if (points.length == 1) {
+        // Tek nokta varsa sadece marker göster
+        _routePolylines.clear();
+        _markers = {
+          Marker(
+            markerId: const MarkerId('single_point'),
+            position: LatLng(points.first.latitude, points.first.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            infoWindow: const InfoWindow(title: 'Rota Noktası'),
+          ),
+        };
+        notifyListeners();
+        return;
+      }
 
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'OK') {
-          final route = data['routes'][0];
-          final encodedPoints = route['overview_polyline']['points'] as String;
-          final List<LatLng> routePoints = _decodePolyline(encodedPoints);
+      // Polyline'ı güncelle
+      _routePolylines = {
+        Polyline(
+          polylineId: PolylineId('route_$_selectedRouteId'),
+          points: points
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList(),
+          color: Colors.blue,
+          width: 5,
+        ),
+      };
 
-          // Polyline'ı güncelle
-          _routePolylines = {
-            Polyline(
-              polylineId: PolylineId('route_$_selectedRouteId'),
-              points: routePoints,
-              color: Colors.blue,
-              width: 5,
-              patterns: [
-                PatternItem.dash(20.0),
-                PatternItem.gap(5.0),
-              ],
-            ),
-          };
+      // Markerları ekle
+      _markers = {
+        Marker(
+          markerId: const MarkerId('start'),
+          position: LatLng(points.first.latitude, points.first.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(title: 'Başlangıç'),
+        ),
+        Marker(
+          markerId: const MarkerId('end'),
+          position: LatLng(points.last.latitude, points.last.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: const InfoWindow(title: 'Bitiş'),
+        ),
+      };
 
-          // Markerları ekle
-          _markers = {
-            Marker(
-              markerId: const MarkerId('start'),
-              position: LatLng(startPoint.latitude, startPoint.longitude),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-              infoWindow: const InfoWindow(title: 'Başlangıç'),
-            ),
-            Marker(
-              markerId: const MarkerId('end'),
-              position: LatLng(endPoint.latitude, endPoint.longitude),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-              infoWindow: const InfoWindow(title: 'Bitiş'),
-            ),
-          };
-
-          // Harita sınırlarını ayarla
-          if (onCameraMove != null) {
-            final bounds = LatLngBounds(
-              southwest: LatLng(
-                routePoints.map((p) => p.latitude).reduce(min),
-                routePoints.map((p) => p.longitude).reduce(min),
-              ),
-              northeast: LatLng(
-                routePoints.map((p) => p.latitude).reduce(max),
-                routePoints.map((p) => p.longitude).reduce(max),
-              ),
-            );
-            onCameraMove!(bounds);
-          }
-        } else {
-          _setError('Rota alınamadı: ${data['status']}');
-        }
-      } else {
-        _setError('Rota alınamadı: HTTP ${response.statusCode}');
+      // Harita sınırlarını ayarla
+      if (onCameraMove != null && points.length > 1) {
+        final routePoints = points
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+        final bounds = LatLngBounds(
+          southwest: LatLng(
+            routePoints.map((p) => p.latitude).reduce(min),
+            routePoints.map((p) => p.longitude).reduce(min),
+          ),
+          northeast: LatLng(
+            routePoints.map((p) => p.latitude).reduce(max),
+            routePoints.map((p) => p.longitude).reduce(max),
+          ),
+        );
+        onCameraMove!(bounds);
       }
 
       notifyListeners();
@@ -290,6 +288,17 @@ class MapViewModel extends ChangeNotifier {
         }
         
         await _locationService.startLocationUpdates();
+
+        // Konum güncellemelerini dinle ve veritabanına kaydet
+        _locationService.getLocationStream().listen((location) async {
+          if (_isTracking && _activeRouteId != null) {
+            _routePoints.add(location);
+            await _databaseService.insertRoutePoint(_activeRouteId!, location);
+            _updatePolylines();
+            notifyListeners();
+          }
+        });
+
       } catch (e) {
         _setError('Error starting tracking: $e');
         _isTracking = false;
@@ -306,7 +315,7 @@ class MapViewModel extends ChangeNotifier {
         if (_activeRouteId != null) {
           final totalDistance = _calculateTotalDistance();
           final duration = _calculateDuration();
-          final averageSpeed = totalDistance / (duration.inSeconds / 3600); // km/h
+          final averageSpeed = (totalDistance / 1000) / (duration.inSeconds / 3600); // km/h
           
           await _databaseService.updateRoute(_activeRouteId!, {
             'end_time': DateTime.now().toIso8601String(),
@@ -318,6 +327,14 @@ class MapViewModel extends ChangeNotifier {
           
           _activeRouteId = null;
           await _loadHistoricalRoutes();
+
+          // Rotayı ve markerları temizle
+          _routePoints.clear();
+          _polylines.clear();
+          _routePolylines.clear();
+          _markers.clear();
+          _selectedRouteDistance = 0;
+          _selectedRouteId = null;
         }
       } catch (e) {
         _setError('Error stopping tracking: $e');
@@ -367,7 +384,7 @@ class MapViewModel extends ChangeNotifier {
   }
 
   List<LocationModel> _douglasPeucker(List<LocationModel> points, double tolerance) {
-    if (points.length <= 2) return points;
+    if (points.isEmpty || points.length <= 2) return points;
 
     double maxDistance = 0;
     int maxIndex = 0;
@@ -441,7 +458,7 @@ class MapViewModel extends ChangeNotifier {
     double lat2,
     double lon2,
   ) {
-    const double earthRadius = 6371; // Dünya yarıçapı (km)
+    const double earthRadius = 6371000; // Dünya yarıçapı (metre)
     
     final double dLat = _toRadians(lat2 - lat1);
     final double dLon = _toRadians(lon2 - lon1);

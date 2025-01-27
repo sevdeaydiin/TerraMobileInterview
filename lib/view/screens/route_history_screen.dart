@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../viewmodel/map_view_model.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/filter_constants.dart';
-
+import '../../core/utils/location_formatter.dart';
 class RouteHistoryScreen extends StatelessWidget {
   final MapViewModel viewModel;
 
@@ -74,9 +74,9 @@ class RouteHistoryScreen extends StatelessWidget {
                       if (endTime != null)
                         Text('Bitiş: ${DateFormat('HH:mm').format(endTime)}'),
                       const SizedBox(height: 4),
-                      Text('Mesafe: ${totalDistance.toStringAsFixed(2)} km'),
+                      Text('Mesafe: ${LocationFormatter.formatDistance(totalDistance)}'),
                       Text('Süre: ${Duration(seconds: duration).inMinutes} dakika'),
-                      Text('Ortalama Hız: ${averageSpeed.toStringAsFixed(2)} km/s'),
+                      Text('Ortalama Hız: ${LocationFormatter.formatSpeed(averageSpeed)}'),
                     ],
                   ),
                   onTap: () {
