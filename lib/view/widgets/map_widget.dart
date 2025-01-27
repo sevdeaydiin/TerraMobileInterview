@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../core/constants/app_constants.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../models/location_model.dart';
 import '../../viewmodel/map_view_model.dart';
 import '../../core/utils/location_formatter.dart';
+import '../../core/constants/app_constants.dart' as AppConstants;
 
 class MapWidget extends StatefulWidget {
   final LocationModel? currentLocation;
@@ -30,11 +32,28 @@ class _MapWidgetState extends State<MapWidget> {
   void initState() {
     super.initState();
     widget.viewModel.onCameraMove = _moveCamera;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateMapStyle();
+    });
   }
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     widget.viewModel.onMapCreated(controller);
+    _updateMapStyle();
+  }
+
+  void _updateMapStyle() {
+    if (_mapController != null) {
+      final isDark = Provider.of<ThemeProvider>(context, listen: false).themeMode == ThemeMode.dark;
+      _mapController!.setMapStyle(isDark ? _darkMapStyle : null);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateMapStyle();
   }
 
   void _moveCamera(LatLngBounds bounds) {
@@ -66,8 +85,8 @@ class _MapWidgetState extends State<MapWidget> {
           onMapCreated: _onMapCreated,
           initialCameraPosition: CameraPosition(
             target: LatLng(
-              AppConstants.konyaLatitude,
-              AppConstants.konyaLongitude,
+              AppConstants.AppConstants.konyaLatitude,
+              AppConstants.AppConstants.konyaLongitude,
             ),
             zoom: 13,
           ),
@@ -181,4 +200,169 @@ class _MapWidgetState extends State<MapWidget> {
         return Icons.map;
     }
   }
+
+  // Google Maps koyu mod stili
+  static const _darkMapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#242f3e"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#242f3e"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#263c3f"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#6b9a76"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#38414e"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#212a37"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9ca5b3"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#1f2835"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#f3d19c"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#2f3948"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#17263c"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#515c6d"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#17263c"
+      }
+    ]
+  }
+]
+''';
 }
