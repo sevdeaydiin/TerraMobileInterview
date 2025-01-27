@@ -5,7 +5,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../models/location_model.dart';
 import '../../viewmodel/map_view_model.dart';
 import '../../core/utils/location_formatter.dart';
-import '../../core/constants/app_constants.dart' as AppConstants;
+import '../../core/constants/app_constants.dart' as appconstants;
 
 class MapWidget extends StatefulWidget {
   final LocationModel? currentLocation;
@@ -79,14 +79,16 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark;
+
     return Stack(
       children: [
         GoogleMap(
           onMapCreated: _onMapCreated,
           initialCameraPosition: CameraPosition(
             target: LatLng(
-              AppConstants.AppConstants.konyaLatitude,
-              AppConstants.AppConstants.konyaLongitude,
+              appconstants.AppConstants.konyaLatitude,
+              appconstants.AppConstants.konyaLongitude,
             ),
             zoom: 13,
           ),
@@ -97,7 +99,6 @@ class _MapWidgetState extends State<MapWidget> {
           markers: widget.viewModel.markers,
           mapType: widget.viewModel.mapType,
         ),
-        // Mesafe göstergesi
         Positioned(
           top: MediaQuery.of(context).padding.top + 16,
           left: 16,
@@ -107,7 +108,7 @@ class _MapWidgetState extends State<MapWidget> {
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? Colors.black54 : Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -160,7 +161,6 @@ class _MapWidgetState extends State<MapWidget> {
                 child: const Icon(Icons.add),
               ),
               const SizedBox(height: 8),
-              // Zoom Out butonu
               FloatingActionButton.small(
                 heroTag: 'zoomOutButton',
                 onPressed: () {
@@ -201,7 +201,6 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
-  // Google Maps koyu mod stili
   static const _darkMapStyle = '''
 [
   {
