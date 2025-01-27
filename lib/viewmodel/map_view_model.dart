@@ -88,9 +88,7 @@ class MapViewModel extends ChangeNotifier {
       await _locationService.requestPermission();
       
       _currentLocation = await _locationService.getCurrentLocation();
-      if (_currentLocation != null) {
-        notifyListeners();
-      }
+      notifyListeners();
       
       _locationService.getLocationStream().listen((location) {
         _currentLocation = location;

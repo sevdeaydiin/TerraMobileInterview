@@ -31,7 +31,6 @@ class _RouteDetailsScreenState extends State<RouteDetailsScreen> {
   void _initializeMapData() {
     if (widget.routePoints.isEmpty) return;
 
-    // Başlangıç ve bitiş noktaları için marker'lar
     _markers = {
       Marker(
         markerId: const MarkerId('start'),
@@ -53,7 +52,6 @@ class _RouteDetailsScreenState extends State<RouteDetailsScreen> {
       ),
     };
 
-    // Rota çizgisi
     _polylines = {
       Polyline(
         polylineId: const PolylineId('route'),
@@ -113,7 +111,6 @@ class _RouteDetailsScreenState extends State<RouteDetailsScreen> {
       ),
       body: Column(
         children: [
-          // Rota bilgileri
           Container(
             padding: const EdgeInsets.all(16),
             color: Theme.of(context).colorScheme.surfaceVariant,

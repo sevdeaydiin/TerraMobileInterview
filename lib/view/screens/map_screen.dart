@@ -93,28 +93,29 @@ class MapScreen extends StatelessWidget {
                 currentDistance: LocationFormatter.formatDistance(viewModel.currentDistance),
                 viewModel: viewModel,
               ),
-              Positioned(
-                bottom: 16,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: ElevatedButton(
-                    onPressed: viewModel.isTracking
-                        ? () => viewModel.stopTracking()
-                        : () => viewModel.startTracking(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: viewModel.isTracking ? Colors.red : Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    ),
-                    child: Text(
-                      viewModel.isTracking
-                          ? 'Rotayı Bitir'
-                          : 'Rotayı Başlat',
+              if (!viewModel.canShowRoute)
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: ElevatedButton(
+                      onPressed: viewModel.isTracking
+                          ? () => viewModel.stopTracking()
+                          : () => viewModel.startTracking(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: viewModel.isTracking ? Colors.red : Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      ),
+                      child: Text(
+                        viewModel.isTracking
+                            ? 'Rotayı Bitir'
+                            : 'Rotayı Başlat',
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           );
         },

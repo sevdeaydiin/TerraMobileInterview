@@ -92,7 +92,6 @@ class DatabaseService implements IDatabaseService {
       },
     ];
 
-    // Her rotayı veritabanına ekle
     for (final route in routes) {
       final points = route.remove('points') as List;
       final routeId = await db.insert('routes', route);
