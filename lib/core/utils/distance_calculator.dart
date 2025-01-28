@@ -1,18 +1,13 @@
 import 'dart:math' as math;
-
-/// Mesafe hesaplama yardımcı sınıfı
-/// Single Responsibility: Sadece mesafe hesaplama işlemlerinden sorumlu
 class DistanceCalculator {
-  /// İki nokta arasındaki mesafeyi metre cinsinden hesaplar
   static double calculateDistance(
     double lat1,
     double lon1,
     double lat2,
     double lon2,
   ) {
-    const double earthRadius = 6371000; // metre cinsinden dünya yarıçapı
+    const double earthRadius = 6371000;
     
-    // Radyana çevir
     final double phi1 = _degreesToRadians(lat1);
     final double phi2 = _degreesToRadians(lat2);
     final double deltaPhi = _degreesToRadians(lat2 - lat1);
@@ -26,7 +21,6 @@ class DistanceCalculator {
     return earthRadius * c;
   }
 
-  /// Dereceyi radyana çevirir
   static double _degreesToRadians(double degrees) {
     return degrees * (math.pi / 180);
   }

@@ -7,7 +7,6 @@ class LocationFormatter {
     }
   }
 
-  /// Hızı formatlar (km/h)
   static String formatSpeed(double speedInKmh) {
     return '${speedInKmh.toStringAsFixed(1)} km/h';
   }

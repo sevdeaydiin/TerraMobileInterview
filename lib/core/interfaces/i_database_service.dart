@@ -1,14 +1,11 @@
 import '../../models/location_model.dart';
 
-/// Database servisi için interface
-/// Single Responsibility: Sadece veritabanı işlemlerinden sorumlu
-/// Interface Segregation: Sadece gerekli metodları içerir
 abstract class IDatabaseService {
   /// Veritabanını başlatır
   Future<void> init();
 
   /// Mock rotaları yükler
-  Future<void> loadMockRoutes();
+  //Future<void> loadMockRoutes();
 
   /// Tüm rotaları getirir
   Future<List<Map<String, dynamic>>> getAllRoutes();

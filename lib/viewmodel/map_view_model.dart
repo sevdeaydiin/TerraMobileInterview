@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' show pi, sin, cos, sqrt, atan2, pow;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -9,7 +8,6 @@ import '../core/interfaces/i_location_service.dart';
 import '../models/location_model.dart';
 import '../core/constants/filter_constants.dart';
 import 'dart:math';
-import 'dart:ui' as ui;
 
 class MapViewModel extends ChangeNotifier {
   final ILocationService _locationService;
@@ -36,10 +34,7 @@ class MapViewModel extends ChangeNotifier {
   DateTime? _startDate;
   DateTime? _endDate;
   MapType _mapType = MapType.normal;
-  final int _maxVisiblePoints = 1000; // Maksimum görünür nokta sayısı
-  
-  BitmapDescriptor? _startIcon;
-  BitmapDescriptor? _endIcon;
+  final int _maxVisiblePoints = 1000;
 
   double _selectedRouteDistance = 0;
   double get selectedRouteDistance => _selectedRouteDistance;
@@ -58,10 +53,8 @@ class MapViewModel extends ChangeNotifier {
   MapType get mapType => _mapType;
   int? get selectedRouteId => _selectedRouteId;
   
-  // Kamera hareketi için callback
   Function(LatLngBounds)? onCameraMove;
   
-  // Harita kontrolcüsü
   GoogleMapController? _mapController;
   
   MapViewModel({
@@ -142,7 +135,6 @@ class MapViewModel extends ChangeNotifier {
         return;
       }
 
-      // Seçilen rotanın mesafesini hesapla
       _selectedRouteDistance = 0;
       for (int i = 0; i < points.length - 1; i++) {
         _selectedRouteDistance += _calculateDistance(
@@ -154,7 +146,6 @@ class MapViewModel extends ChangeNotifier {
       }
 
       if (points.length == 1) {
-        // Tek nokta varsa sadece marker göster
         _routePolylines.clear();
         _markers = {
           Marker(
@@ -168,7 +159,6 @@ class MapViewModel extends ChangeNotifier {
         return;
       }
 
-      // Polyline'ı güncelle
       _routePolylines = {
         Polyline(
           polylineId: PolylineId('route_$_selectedRouteId'),
@@ -180,7 +170,6 @@ class MapViewModel extends ChangeNotifier {
         ),
       };
 
-      // Markerları ekle
       _markers = {
         Marker(
           markerId: const MarkerId('start'),
@@ -196,7 +185,6 @@ class MapViewModel extends ChangeNotifier {
         ),
       };
 
-      // Harita sınırlarını ayarla
       if (onCameraMove != null && points.length > 1) {
         final routePoints = points
             .map((point) => LatLng(point.latitude, point.longitude))
@@ -254,71 +242,83 @@ class MapViewModel extends ChangeNotifier {
 
   Future<void> startTracking() async {
     if (!_isTracking) {
-      await toggleTracking();
-    }
-  }
-
-  Future<void> stopTracking() async {
-    if (_isTracking) {
-      await toggleTracking();
-    }
-  }
-  
-  Future<void> toggleTracking() async {
-    if (!_isTracking) {
-      // Start tracking
       _isTracking = true;
-      _routePoints.clear();
+      _routePoints = []; 
       _polylines.clear();
       
       try {
         _setLoading(true);
-        // Create new route in database
-        final routeId = await _databaseService.insertRoute({
-          'start_time': DateTime.now().toIso8601String(),
-          'is_active': 1,
-        });
-        _activeRouteId = routeId;
-        
-        if (_currentLocation != null) {
-          _routePoints.add(_currentLocation!);
-          await _databaseService.insertRoutePoint(routeId, _currentLocation!);
+
+        final currentLocation = await _locationService.getCurrentLocation();
+        if (currentLocation != null) {
+          _routePoints = [currentLocation];
+          
+          if (_mapController != null) {
+            await _mapController!.animateCamera(
+              CameraUpdate.newLatLng(
+                LatLng(currentLocation.latitude, currentLocation.longitude),
+              ),
+            );
+          }
+          
+          final routeId = await _databaseService.insertRoute({
+            'start_time': DateTime.now().toIso8601String(),
+            'is_active': 1,
+          });
+          _activeRouteId = routeId;
+          
+          await _databaseService.insertRoutePoint(routeId, currentLocation);
+          
+          _locationService.getLocationStream().listen((location) async {
+            if (_isTracking && _activeRouteId != null) {
+              _routePoints.add(location);
+              await _databaseService.insertRoutePoint(_activeRouteId!, location);
+              _updatePolylines();
+
+              notifyListeners();
+            }
+          });
+        } else {
+          _setError('Current location is null. Please check location settings.');
         }
         
         await _locationService.startLocationUpdates();
-
-        // Konum güncellemelerini dinle ve veritabanına kaydet
-        _locationService.getLocationStream().listen((location) async {
-          if (_isTracking && _activeRouteId != null) {
-            _routePoints.add(location);
-            await _databaseService.insertRoutePoint(_activeRouteId!, location);
-            _updatePolylines();
-            notifyListeners();
-          }
-        });
-
+        notifyListeners();
       } catch (e) {
         _setError('Error starting tracking: $e');
         _isTracking = false;
       } finally {
         _setLoading(false);
       }
-    } else {
-      // Stop tracking
+    }
+  }
+
+  Future<void> stopTracking() async {
+    if (_isTracking) {
       _isTracking = false;
       await _locationService.stopLocationUpdates();
       
       try {
         _setLoading(true);
-        if (_activeRouteId != null) {
-          final totalDistance = _calculateTotalDistance();
-          final duration = _calculateDuration();
-          final averageSpeed = (totalDistance / 1000) / (duration.inSeconds / 3600); // km/h
+        if (_activeRouteId != null && _routePoints.length >= 2) {
+          double totalDistance = 0;
+          for (int i = 0; i < _routePoints.length - 1; i++) {
+            totalDistance += _calculateDistance(
+              _routePoints[i].latitude,
+              _routePoints[i].longitude,
+              _routePoints[i + 1].latitude,
+              _routePoints[i + 1].longitude,
+            );
+          }
+          
+          final duration = _routePoints.last.timestamp.difference(_routePoints.first.timestamp).inSeconds;
+          
+          final averageSpeed = duration > 0 ? (totalDistance / 1000) / (duration / 3600) : 0;
           
           await _databaseService.updateRoute(_activeRouteId!, {
             'end_time': DateTime.now().toIso8601String(),
             'total_distance': totalDistance,
-            'duration': duration.inSeconds,
+            'duration': duration,
             'average_speed': averageSpeed,
             'is_active': 0,
           });
@@ -326,21 +326,18 @@ class MapViewModel extends ChangeNotifier {
           _activeRouteId = null;
           await _loadHistoricalRoutes();
 
-          // Rotayı ve markerları temizle
           _routePoints.clear();
           _polylines.clear();
           _routePolylines.clear();
           _markers.clear();
-          _selectedRouteDistance = 0;
-          _selectedRouteId = null;
         }
       } catch (e) {
         _setError('Error stopping tracking: $e');
       } finally {
         _setLoading(false);
       }
+      notifyListeners();
     }
-    notifyListeners();
   }
   
   void _updatePolylines() {
@@ -365,11 +362,9 @@ class MapViewModel extends ChangeNotifier {
   List<LocationModel> _optimizeRoutePoints(List<LocationModel> points) {
     if (points.length <= _maxVisiblePoints) return points;
 
-    // Douglas-Peucker algoritması ile nokta sayısını azalt
-    final tolerance = 0.00001; // Yaklaşık 1 metre
+    const tolerance = 0.00001;
     final optimizedPoints = _douglasPeucker(points, tolerance);
 
-    // Eğer hala çok fazla nokta varsa, eşit aralıklarla örnekleme yap
     if (optimizedPoints.length > _maxVisiblePoints) {
       final step = optimizedPoints.length ~/ _maxVisiblePoints;
       return List.generate(
@@ -445,18 +440,13 @@ class MapViewModel extends ChangeNotifier {
     return totalDistance;
   }
   
-  Duration _calculateDuration() {
-    if (_routePoints.length < 2) return Duration.zero;
-    return _routePoints.last.timestamp.difference(_routePoints.first.timestamp);
-  }
-  
   double _calculateDistance(
     double lat1,
     double lon1,
     double lat2,
     double lon2,
   ) {
-    const double earthRadius = 6371000; // Dünya yarıçapı (metre)
+    const double earthRadius = 6371000;
     
     final double dLat = _toRadians(lat2 - lat1);
     final double dLon = _toRadians(lon2 - lon1);
@@ -489,7 +479,6 @@ class MapViewModel extends ChangeNotifier {
   List<Map<String, dynamic>> _getFilteredRoutes() {
     var filteredRoutes = List<Map<String, dynamic>>.from(_historicalRoutes);
 
-    // Tarih filtresi
     if (_startDate != null || _endDate != null) {
       filteredRoutes = filteredRoutes.where((route) {
         final routeDate = DateTime.parse(route['start_time'] as String);
@@ -503,7 +492,6 @@ class MapViewModel extends ChangeNotifier {
       }).toList();
     }
 
-    // Sıralama
     switch (_selectedFilter) {
       case FilterConstants.dateAsc:
         filteredRoutes.sort((a, b) => DateTime.parse(b['start_time'] as String)
@@ -532,55 +520,6 @@ class MapViewModel extends ChangeNotifier {
     }
 
     return filteredRoutes;
-  }
-
-  Future<void> _createMarkerIcons() async {
-    if (_startIcon == null) {
-      _startIcon = await _createCustomMarkerFromIcon(
-        Icons.radio_button_on,
-        Colors.green,
-      );
-    }
-    if (_endIcon == null) {
-      _endIcon = await _createCustomMarkerFromIcon(
-        Icons.where_to_vote_rounded,
-        Colors.red,
-      );
-    }
-  }
-
-  Future<BitmapDescriptor> _createCustomMarkerFromIcon(IconData icon, Color color) async {
-    final pictureRecorder = ui.PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
-    final size = const Size(48, 48);
-
-    final paint = Paint()
-      ..color = color;
-
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-    textPainter.text = TextSpan(
-      text: String.fromCharCode(icon.codePoint),
-      style: TextStyle(
-        fontSize: 40,
-        fontFamily: icon.fontFamily,
-        color: color,
-      ),
-    );
-
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        (size.width - textPainter.width) / 2,
-        (size.height - textPainter.height) / 2,
-      ),
-    );
-
-    final picture = pictureRecorder.endRecording();
-    final image = await picture.toImage(size.width.toInt(), size.height.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-
-    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
   }
 
   void _setLoading(bool value) {
@@ -621,7 +560,7 @@ class MapViewModel extends ChangeNotifier {
           'destination': '${destination.latitude},${destination.longitude}',
           'waypoints': waypoints.map((p) => '${p.latitude},${p.longitude}').join('|'),
           'mode': 'walking',
-          'key': 'YOUR_GOOGLE_MAPS_API_KEY', // Google Maps API anahtarınızı buraya ekleyin
+          'key': 'AIzaSyCY5fBwejF-Qv0h93Ii7doiWgRxqJ1hB_Y',
         },
       );
 
@@ -640,22 +579,4 @@ class MapViewModel extends ChangeNotifier {
     }
   }
 
-  LatLngBounds _getBoundsForPoints(List<LatLng> points) {
-    double minLat = points[0].latitude;
-    double maxLat = points[0].latitude;
-    double minLng = points[0].longitude;
-    double maxLng = points[0].longitude;
-
-    for (var point in points) {
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
-      if (point.longitude < minLng) minLng = point.longitude;
-      if (point.longitude > maxLng) maxLng = point.longitude;
-    }
-
-    return LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
-  }
 }

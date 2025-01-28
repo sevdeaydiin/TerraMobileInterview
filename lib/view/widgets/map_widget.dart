@@ -85,7 +85,7 @@ class _MapWidgetState extends State<MapWidget> {
       children: [
         GoogleMap(
           onMapCreated: _onMapCreated,
-          initialCameraPosition: CameraPosition(
+          initialCameraPosition: const CameraPosition(
             target: LatLng(
               appconstants.AppConstants.konyaLatitude,
               appconstants.AppConstants.konyaLongitude,

@@ -50,13 +50,14 @@ class DatabaseService implements IDatabaseService {
     );
 
     // Veritabanı boşsa mock verileri ekle
-    final routes = await getAllRoutes();
-    if (routes.isEmpty) {
-      await loadMockRoutes();
-    }
+    //final routes = 
+    await getAllRoutes();
+    // if (routes.isEmpty) {
+    //   await loadMockRoutes();
+    // }
   }
 
-  @override
+/*   @override
   Future<void> loadMockRoutes() async {
     final db = await database;
 
@@ -106,7 +107,7 @@ class DatabaseService implements IDatabaseService {
         });
       }
     }
-  }
+  } */
 
   @override
   Future<List<Map<String, dynamic>>> getAllRoutes() async {

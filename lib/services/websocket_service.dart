@@ -44,7 +44,6 @@ class WebSocketService {
         cancelOnError: false,
       );
 
-      // Ping/Pong mekanizması başlat
       _startPingTimer();
     } catch (e) {
       _handleError(e);

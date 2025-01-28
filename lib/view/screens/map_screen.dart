@@ -48,7 +48,7 @@ class MapScreen extends StatelessWidget {
                         viewModel.isTracking ? Icons.location_on : Icons.location_off,
                         color: viewModel.isTracking ? Colors.green : Colors.red,
                       ),
-                      onPressed: () => viewModel.toggleTracking(),
+                      onPressed: () => viewModel.isTracking ? viewModel.stopTracking() : viewModel.startTracking(),
                     );
                   },
                 ),

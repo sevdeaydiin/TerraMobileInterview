@@ -2,17 +2,11 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import '../core/interfaces/i_location_service.dart';
 import '../models/location_model.dart';
-
-/// Geolocator kullanarak konum servisi implementasyonu
-/// Single Responsibility: Sadece konum işlemlerinden sorumlu
-/// Open/Closed: Yeni konum sağlayıcıları eklenebilir
-/// Liskov Substitution: ILocationService interface'ini tam olarak implemente eder
 class LocationService implements ILocationService {
   StreamController<LocationModel>? _locationController;
   StreamSubscription<Position>? _positionSubscription;
   bool _isTracking = false;
 
-  /// Singleton pattern - Dependency Inversion için factory constructor kullanılabilir
   static final LocationService _instance = LocationService._internal();
   factory LocationService() => _instance;
   LocationService._internal();
@@ -73,7 +67,7 @@ class LocationService implements ILocationService {
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // 10 metrede bir güncelle
+        distanceFilter: 10,
       ),
     ).listen((Position position) {
       if (_locationController != null && !_locationController!.isClosed) {
@@ -101,8 +95,6 @@ class LocationService implements ILocationService {
     _locationController = null;
   }
 }
-
-/// Konum servisi ile ilgili özel hata sınıfı
 class LocationException implements Exception {
   final String message;
   LocationException(this.message);

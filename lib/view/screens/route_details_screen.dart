@@ -92,7 +92,7 @@ class _RouteDetailsScreenState extends State<RouteDetailsScreen> {
           southwest: LatLng(minLat, minLng),
           northeast: LatLng(maxLat, maxLng),
         ),
-        50, // padding
+        50,
       ),
     );
   }
@@ -113,7 +113,7 @@ class _RouteDetailsScreenState extends State<RouteDetailsScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -162,7 +162,6 @@ class _RouteDetailsScreenState extends State<RouteDetailsScreen> {
               ],
             ),
           ),
-          // Harita
           Expanded(
             child: GoogleMap(
               onMapCreated: _onMapCreated,
