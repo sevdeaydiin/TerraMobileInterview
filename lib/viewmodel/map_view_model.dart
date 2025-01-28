@@ -242,50 +242,55 @@ class MapViewModel extends ChangeNotifier {
 
   Future<void> startTracking() async {
     if (!_isTracking) {
-      _isTracking = true;
-      _routePoints = []; 
-      _polylines.clear();
-      
       try {
         _setLoading(true);
-
+        
+        // Önce mevcut konumu al
         final currentLocation = await _locationService.getCurrentLocation();
-        if (currentLocation != null) {
-          _routePoints = [currentLocation];
-          
-          if (_mapController != null) {
-            await _mapController!.animateCamera(
-              CameraUpdate.newLatLng(
-                LatLng(currentLocation.latitude, currentLocation.longitude),
-              ),
-            );
-          }
-          
-          final routeId = await _databaseService.insertRoute({
-            'start_time': DateTime.now().toIso8601String(),
-            'is_active': 1,
-          });
-          _activeRouteId = routeId;
-          
-          await _databaseService.insertRoutePoint(routeId, currentLocation);
-          
-          _locationService.getLocationStream().listen((location) async {
-            if (_isTracking && _activeRouteId != null) {
-              _routePoints.add(location);
-              await _databaseService.insertRoutePoint(_activeRouteId!, location);
-              _updatePolylines();
-
-              notifyListeners();
-            }
-          });
-        } else {
-          _setError('Current location is null. Please check location settings.');
+        if (currentLocation == null) {
+          _setError('Konum alınamadı. Lütfen konum ayarlarınızı kontrol edin.');
+          return;
         }
+
+        // Konumu aldıktan sonra kamerayı ayarla
+        if (_mapController != null) {
+          await _mapController!.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: LatLng(currentLocation.latitude, currentLocation.longitude),
+                zoom: 17.0,
+              ),
+            ),
+          );
+        }
+
+        // Konum alındı ve kamera ayarlandı, şimdi kaydı başlat
+        _isTracking = true;
+        _routePoints = [currentLocation];
+        _polylines.clear();
+        
+        final routeId = await _databaseService.insertRoute({
+          'start_time': DateTime.now().toIso8601String(),
+          'is_active': 1,
+        });
+        _activeRouteId = routeId;
+        
+        await _databaseService.insertRoutePoint(routeId, currentLocation);
         
         await _locationService.startLocationUpdates();
+        
+        _locationService.getLocationStream().listen((location) async {
+          if (_isTracking && _activeRouteId != null) {
+            _routePoints.add(location);
+            await _databaseService.insertRoutePoint(_activeRouteId!, location);
+            _updatePolylines();
+            notifyListeners();
+          }
+        });
+        
         notifyListeners();
       } catch (e) {
-        _setError('Error starting tracking: $e');
+        _setError('Rota başlatılırken hata oluştu: $e');
         _isTracking = false;
       } finally {
         _setLoading(false);

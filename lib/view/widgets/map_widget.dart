@@ -27,11 +27,30 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   GoogleMapController? _mapController;
+  LatLng? _initialPosition;
+  static bool _isFirstLaunch = true;
 
   @override
   void initState() {
     super.initState();
     widget.viewModel.onCameraMove = _moveCamera;
+    _initialPosition = _isFirstLaunch
+        ? LatLng(
+            appconstants.AppConstants.konyaLatitude,
+            appconstants.AppConstants.konyaLongitude,
+          )
+        : (widget.currentLocation != null
+            ? LatLng(
+                widget.currentLocation!.latitude,
+                widget.currentLocation!.longitude,
+              )
+            : LatLng(
+                appconstants.AppConstants.konyaLatitude,
+                appconstants.AppConstants.konyaLongitude,
+              ));
+    
+    _isFirstLaunch = false;
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateMapStyle();
     });
@@ -85,12 +104,9 @@ class _MapWidgetState extends State<MapWidget> {
       children: [
         GoogleMap(
           onMapCreated: _onMapCreated,
-          initialCameraPosition: const CameraPosition(
-            target: LatLng(
-              appconstants.AppConstants.konyaLatitude,
-              appconstants.AppConstants.konyaLongitude,
-            ),
-            zoom: 13,
+          initialCameraPosition: CameraPosition(
+            target: _initialPosition!,
+            zoom: 15,
           ),
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
