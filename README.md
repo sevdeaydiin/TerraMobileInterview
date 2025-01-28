@@ -3,6 +3,14 @@
 ## Proje Özeti
 Terra Mobile, Flutter kullanarak geliştirilen bir mobil harita uygulamasıdır. Uygulama, kullanıcıların gerçek zamanlı konum takibi yapmasına ve geçmiş rotalarını kaydetmesine olanak tanır. MVVM (Model-View-ViewModel) mimarisi kullanılarak geliştirilmiştir.
 
+<img src="https://github.com/user-attachments/assets/4926953c-9f99-43a7-a9f0-706ab54d37a9" width="120" height="240" /> 
+<img src="https://github.com/user-attachments/assets/2be9faaf-842d-4962-ae4b-93d6ad9bdd9a" width="120" height="240" />
+<img src="https://github.com/user-attachments/assets/5baf73ec-8b50-4179-aec3-1d822cb5af20" width="120" height="240" />
+
+<img src="https://github.com/user-attachments/assets/baa82f27-2f44-4439-8b23-ed9be64abcea" width="120" height="240" />
+<img src="https://github.com/user-attachments/assets/dd183f71-337e-4aa2-a27d-a0ba3a58c05c" width="120" height="240" />
+<img src="https://github.com/user-attachments/assets/196d2961-aeac-4d65-9b46-ef08e801a69d" width="120" height="240" />
+
 ## Temel Özellikler
 - **Canlı Konum Takibi**: Kullanıcının gerçek zamanlı konumunu harita üzerinde gösterir.
 - **Geçmiş Rota Kaydı**: Kullanıcının hareket rotasını kaydeder ve geçmiş rotaları tarih/saat bazlı listeleyerek görselleştirir.
