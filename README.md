@@ -38,7 +38,7 @@ Terra Mobile, Flutter kullanarak geliştirilen bir mobil harita uygulamasıdır.
 
 4. **Google API Key**: 
     ```bash
-   AIzaSyCY5fBwejF-Qv0h93Ii7doiWgRxqJ1hB_Y
+   YOUR API KEY
    ```
 5. **Simülatör veya Cihazda Çalıştırma**: Uygulamayı çalıştırmak için aşağıdaki komutu kullanın.
    ```bash
